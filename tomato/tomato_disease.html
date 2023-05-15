@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deteksi Penyakit Tanaman</title>
+</head>
+<body>
+    <h1>Deteksi Penyakit Tanaman</h1>
+    
+    <input type="file" id="inputImage" accept="image/*">
+    <button onclick="detectPlantDisease()">Deteksi</button>
+    
+    <div id="result"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.5.0"></script>
+    <script>
+        const IMAGE_WIDTH = 224; // Ubah sesuai dengan ukuran input gambar yang diharapkan oleh model Anda
+        const IMAGE_HEIGHT = 224; // Ubah sesuai dengan ukuran input gambar yang diharapkan oleh model Anda
+        
+        async function detectPlantDisease() {
+            var input = document.getElementById('inputImage');
+            var file = input.files[0];
+            
+            var reader = new FileReader();
+            reader.onload = async function(e) {
+                var image = new Image();
+                image.src = e.target.result;
+                
+                image.onload = async function() {
+                    // Memuat model 
+                    const MODEL_URL = 'http://127.0.0.1:8887/model.json';
+                    const model = await tf.loadLayersModel(MODEL_URL);
+                    
+                    // Mengubah gambar menjadi tensor
+                    const tensor = tf.browser.fromPixels(image)
+                        .resizeNearestNeighbor([IMAGE_WIDTH, IMAGE_HEIGHT])
+                        .toFloat()
+                        .expandDims();
+                    
+                    // Normalisasi tensor
+                    const normalizedTensor = tensor.div(tf.scalar(255));
+                    
+                    // Melakukan prediksi dengan model
+                    const prediction = await model.predict(normalizedTensor).data();
+                    
+                    // Mengambil indeks prediksi terbesar sebagai label penyakit
+                    const predictedLabelIndex = tf.argMax(prediction).dataSync()[0];
+                    
+                    // Mengganti bagian ini dengan daftar label penyakit yang sesuai dengan model Anda
+                    const labels = [
+                        'Tomato_Bacterial_spot',
+                        'Tomato_Early_blight',
+                        'Tomato_Leaf_Mold',
+                        'Tomato_Septoria_leaf_spot',
+                        'Tomato_Spider_mites_Two_spotted_spider_mite',
+                        'Tomato__Target_Spot',
+                        'Tomato__Tomato_YellowLeaf__Curl_Virus',
+                        'Tomato__Tomato_mosaic_virus',
+                        'Tomato_healthy'
+                    ];
+                    
+                    const predictedLabel = labels[predictedLabelIndex];
+                    
+                    // Menampilkan hasil deteksi
+                    var resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = "Gambar berhasil diunggah. Hasil deteksi: " + predictedLabel;
+                    
+                    // Membebaskan memori
+                    tensor.dispose();
+                    normalizedTensor.dispose();
+                    tf.dispose(model);
+                }
+            }
+            reader.readAsDataURL(file);
+        }
+    </script>
+</body>
+</html>
